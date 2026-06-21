@@ -28,7 +28,7 @@ OCR_LANGUAGE: str = "en"
 OCR_MIN_CONFIDENCE: float = 0.5  # Minimum confidence to keep a detected text box
 
 # --- LLM Settings ---
-GEMINI_MODEL: str = "gemini-2.0-flash"
+GEMINI_MODEL: str = "gemini-2.5-flash"
 LLM_TEMPERATURE: float = 0.1  # Low temperature for factual/consistent outputs
 LLM_MAX_TOKENS: int = 4096
 
@@ -46,10 +46,10 @@ def validate_config() -> list[str]:
     """
     issues: list[str] = []
 
-    if not GEMINI_API_KEY:
+    if not GEMINI_API_KEY or "your_api_key" in GEMINI_API_KEY.lower() or "your_key" in GEMINI_API_KEY.lower():
         issues.append(
-            "GEMINI_API_KEY is not set. Set it in your .env file or as an "
-            "environment variable."
+            "GEMINI_API_KEY is set to a placeholder value or not configured. "
+            "Please add your actual Gemini API key from https://aistudio.google.com/apikey to the .env file."
         )
 
     if not TOXICITY_DB_PATH.exists():

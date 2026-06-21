@@ -93,52 +93,77 @@ Examples:
         else:
             print(f"⚠️  {issue}", file=sys.stderr)
 
-    # --- Stage 1: OCR ---
-    print(f"\n📷 Extracting text from: {args.image}")
-    extractor = TextExtractor()
-    raw_text, confidence = extractor.extract_with_confidence(args.image)
+    try:
+        # --- Stage 1: OCR ---
+        print(f"\n📷 Extracting text from: {args.image}")
+        extractor = TextExtractor()
+        raw_text, confidence = extractor.extract_with_confidence(args.image)
 
-    if not raw_text.strip():
-        print("❌ No text could be extracted from the image.", file=sys.stderr)
+        if not raw_text.strip():
+            print("❌ No text could be extracted from the image.", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"✅ OCR complete (confidence: {confidence:.1%})")
+        print(f"   Raw text preview: {raw_text[:150]}...")
+
+        # --- Stage 2: Parse ingredients ---
+        print("\n🧠 Parsing ingredients with AI...")
+        ingredients = parse_ingredients(raw_text)
+
+        if not ingredients:
+            print("❌ No ingredients could be identified.", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"✅ Found {len(ingredients)} ingredients:")
+        for ing in ingredients:
+            e_tag = f" ({ing.e_number})" if ing.e_number else ""
+            print(f"   • {ing.name}{e_tag} [{ing.category.value}]")
+
+        # --- Stages 3 & 4: Lookup + Score ---
+        print("\n⚖️  Scoring toxicity for each ingredient...")
+        report = generate_report(
+            ingredients=ingredients,
+            image_path=args.image,
+            raw_ocr_text=raw_text,
+        )
+
+        # --- Stage 5: Output ---
+        if args.json:
+            # JSON output
+            print(report.model_dump_json(indent=2))
+        else:
+            # Formatted terminal output
+            _print_report(report)
+
+        # Generate PDF if requested
+        if args.output:
+            print(f"\n📄 Generating PDF report: {args.output}")
+            generate_pdf(report, args.output)
+            print(f"✅ Report saved to {args.output}")
+
+    except Exception as exc:
+        print("\n" + "=" * 60, file=sys.stderr)
+        print("❌ PIPELINE EXECUTION ERROR", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        
+        exc_str = str(exc)
+        exc_name = type(exc).__name__
+        if "APIError" in exc_name or "ClientError" in exc_name or "ServerError" in exc_name or "google.genai" in str(type(exc)) or "429" in exc_str or "400" in exc_str:
+            print(f"\nGemini API Error: {exc}", file=sys.stderr)
+            if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+                print("\n💡 SUGGESTIONS FOR 429 RESOURCE_EXHAUSTED:", file=sys.stderr)
+                print("  1. The free tier of Gemini API is currently rate-limiting this request.", file=sys.stderr)
+                print("  2. If this is a new API key, it might take a few minutes to fully provision.", file=sys.stderr)
+                print("  3. Check your Gemini API usage or quota limits at https://aistudio.google.com/.", file=sys.stderr)
+                print("  4. Wait 30-60 seconds and run the command again.", file=sys.stderr)
+            elif "400" in exc_str or "API_KEY_INVALID" in exc_str:
+                print("\n💡 SUGGESTIONS:", file=sys.stderr)
+                print("  Please double-check that the GEMINI_API_KEY in your .env file is correct.", file=sys.stderr)
+        else:
+            print(f"\nAn unexpected error occurred: {exc}", file=sys.stderr)
+        
+        print("\n" + "=" * 60, file=sys.stderr)
         sys.exit(1)
-
-    print(f"✅ OCR complete (confidence: {confidence:.1%})")
-    print(f"   Raw text preview: {raw_text[:150]}...")
-
-    # --- Stage 2: Parse ingredients ---
-    print("\n🧠 Parsing ingredients with AI...")
-    ingredients = parse_ingredients(raw_text)
-
-    if not ingredients:
-        print("❌ No ingredients could be identified.", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"✅ Found {len(ingredients)} ingredients:")
-    for ing in ingredients:
-        e_tag = f" ({ing.e_number})" if ing.e_number else ""
-        print(f"   • {ing.name}{e_tag} [{ing.category.value}]")
-
-    # --- Stages 3 & 4: Lookup + Score ---
-    print("\n⚖️  Scoring toxicity for each ingredient...")
-    report = generate_report(
-        ingredients=ingredients,
-        image_path=args.image,
-        raw_ocr_text=raw_text,
-    )
-
-    # --- Stage 5: Output ---
-    if args.json:
-        # JSON output
-        print(report.model_dump_json(indent=2))
-    else:
-        # Formatted terminal output
-        _print_report(report)
-
-    # Generate PDF if requested
-    if args.output:
-        print(f"\n📄 Generating PDF report: {args.output}")
-        generate_pdf(report, args.output)
-        print(f"✅ Report saved to {args.output}")
 
 
 def _print_report(report) -> None:

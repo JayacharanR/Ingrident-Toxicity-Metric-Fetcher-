@@ -63,13 +63,15 @@ class TextExtractor:
     def _get_ocr(self):
         """Lazily initialise PaddleOCR (first call downloads models ~100 MB)."""
         if self._ocr is None:
+            import os
+            os.environ["FLAGS_use_mkldnn"] = "0"
+            os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
+
             from paddleocr import PaddleOCR
 
             self._ocr = PaddleOCR(
-                use_angle_cls=True,
                 lang=self.language,
-                show_log=False,
-                use_gpu=False,  # CPU by default; set True if GPU available
+                enable_mkldnn=False,
             )
         return self._ocr
 
@@ -87,24 +89,40 @@ class TextExtractor:
         """
         ocr = self._get_ocr()
 
+        # PaddleOCR v3 has its own doc preprocessing pipeline, so pass
+        # file paths directly. Only use our preprocessor for raw arrays.
         if isinstance(image, (str, Path)):
-            image = preprocess(image)
+            ocr_input = str(image)
+        else:
+            ocr_input = image
 
-        results = ocr.ocr(image, cls=True)
+        results = list(ocr.predict(ocr_input))
 
         boxes: list[TextBox] = []
-        if not results or not results[0]:
+        if not results:
             logger.warning("PaddleOCR returned no results")
             return boxes
 
-        for line in results[0]:
-            bbox, (text, confidence) = line
-            if confidence >= self.min_confidence:
-                boxes.append(TextBox(
-                    text=text.strip(),
-                    confidence=confidence,
-                    bbox=bbox,
-                ))
+        # PaddleOCR v3 returns OCRResult objects with rec_texts, rec_scores, dt_polys
+        for ocr_result in results:
+            texts = ocr_result.get("rec_texts", [])
+            scores = ocr_result.get("rec_scores", [])
+            polys = ocr_result.get("dt_polys", [])
+
+            for i, text in enumerate(texts):
+                confidence = scores[i] if i < len(scores) else 0.0
+                if confidence >= self.min_confidence:
+                    # Convert numpy polygon to list of [x, y] pairs
+                    bbox = []
+                    if i < len(polys):
+                        poly = polys[i]
+                        bbox = [[float(pt[0]), float(pt[1])] for pt in poly]
+
+                    boxes.append(TextBox(
+                        text=text.strip(),
+                        confidence=float(confidence),
+                        bbox=bbox,
+                    ))
 
         # Sort by vertical position, then horizontal (reading order)
         boxes.sort(key=lambda b: (b.y_center, b.x_center))

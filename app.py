@@ -293,8 +293,26 @@ def _run_analysis(uploaded_file) -> None:
         _display_results(report)
 
     except Exception as exc:
-        st.error(f"❌ An error occurred: {exc}")
-        raise
+        exc_str = str(exc)
+        if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+            st.error("⚠️ **Gemini API Rate Limit / Quota Exceeded (429)**")
+            st.markdown("""
+            The Gemini API returned a `429 Resource Exhausted` error. 
+            
+            **Suggestions to resolve:**
+            1. **Wait and Retry**: The free tier of Gemini has strict rate limits. Please wait 30-60 seconds and click **Analyze Ingredients** again.
+            2. **Check API Key Quota**: Go to [Google AI Studio](https://aistudio.google.com/) to monitor your usage and quotas.
+            3. **Billing config**: Ensure that your API key project is configured correctly and billing setup hasn't disabled your free tier quota.
+            """)
+        elif "400" in exc_str or "API_KEY_INVALID" in exc_str:
+            st.error("🔑 **Invalid Gemini API Key (400)**")
+            st.markdown("""
+            The Gemini API key provided in your `.env` file is invalid. 
+            
+            Please go to [Google AI Studio](https://aistudio.google.com/apikey) to generate a valid API key, copy it, and replace the `GEMINI_API_KEY` in your `.env` file.
+            """)
+        else:
+            st.error(f"❌ **An unexpected error occurred:** {exc}")
 
 
 def _display_results(report) -> None:

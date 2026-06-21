@@ -56,6 +56,33 @@ class ReportPDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}/{{nb}}", align="C")
 
 
+def _clean_pdf_text(text: str) -> str:
+    """Replace or remove non-latin1 characters like emojis, smart quotes, etc."""
+    if not text:
+        return ""
+    # Standardize common problematic characters
+    replacements = {
+        "✅": "[SAFE]",
+        "⚠️": "[WARNING]",
+        "🟢": "",
+        "🟡": "",
+        "🟠": "",
+        "🔴": "",
+        "⛔": "",
+        "—": "-",
+        "–": "-",
+        "“": '"',
+        "”": '"',
+        "‘": "'",
+        "’": "'",
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    
+    # Drop any other non-latin1 characters
+    return text.encode("latin-1", errors="ignore").decode("latin-1")
+
+
 def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
     """Generate a PDF toxicity report.
 
@@ -77,7 +104,7 @@ def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
     # --- Product Summary ---
     pdf.set_font("Helvetica", "B", 16)
     pdf.set_text_color(30, 30, 30)
-    pdf.cell(0, 10, f"Product: {report.product_name}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 10, f"Product: {_clean_pdf_text(report.product_name)}", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(3)
 
     # Overall score box
@@ -100,7 +127,7 @@ def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
     # Summary text
     pdf.set_text_color(60, 60, 60)
     pdf.set_font("Helvetica", "", 10)
-    pdf.multi_cell(0, 5, report.summary)
+    pdf.multi_cell(0, 5, _clean_pdf_text(report.summary))
     pdf.ln(5)
 
     # Stats
@@ -135,7 +162,8 @@ def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
         pdf.set_text_color(30, 30, 30)
 
         # Calculate row height based on summary text
-        summary_text = item.summary[:100] + ("..." if len(item.summary) > 100 else "")
+        clean_summary = _clean_pdf_text(item.summary)
+        summary_text = clean_summary[:100] + ("..." if len(clean_summary) > 100 else "")
         line_height = 6
         row_height = max(8, line_height * ((len(summary_text) // 40) + 1))
 
@@ -158,7 +186,7 @@ def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
 
         # Name column
         pdf.set_fill_color(*bg)
-        pdf.cell(col_widths[0], row_height, item.ingredient.name[:30], border=1, fill=True)
+        pdf.cell(col_widths[0], row_height, _clean_pdf_text(item.ingredient.name)[:30], border=1, fill=True)
 
         # Score column with color
         pdf.set_fill_color(*risk_color)
@@ -193,7 +221,7 @@ def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
         pdf.set_font("Helvetica", "B", 10)
         pdf.cell(
             0, 8,
-            f"  {item.ingredient.name}  —  Score: {item.toxicity_score}/10 ({item.risk_level.value})",
+            f"  {_clean_pdf_text(item.ingredient.name)}  -  Score: {item.toxicity_score}/10 ({item.risk_level.value})",
             fill=True, new_x="LMARGIN", new_y="NEXT",
         )
 
@@ -202,14 +230,14 @@ def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
         pdf.ln(2)
 
         if item.adi:
-            pdf.cell(0, 5, f"ADI: {item.adi}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 5, f"ADI: {_clean_pdf_text(item.adi)}", new_x="LMARGIN", new_y="NEXT")
 
         if item.data_sources:
-            pdf.cell(0, 5, f"Sources: {', '.join(item.data_sources)}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 5, f"Sources: {_clean_pdf_text(', '.join(item.data_sources))}", new_x="LMARGIN", new_y="NEXT")
 
         pdf.ln(1)
         pdf.set_font("Helvetica", "I", 9)
-        pdf.multi_cell(0, 5, item.harm_explanation)
+        pdf.multi_cell(0, 5, _clean_pdf_text(item.harm_explanation))
         pdf.ln(5)
 
     # Save

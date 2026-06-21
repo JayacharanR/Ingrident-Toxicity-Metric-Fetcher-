@@ -74,6 +74,53 @@ Return a JSON object with these exact fields:
 }}
 """
 
+_BATCH_SCORING_SYSTEM_PROMPT = """\
+You are a toxicology and food safety expert. Your job is to evaluate a list of food
+ingredients and assign a TOXICITY SCORE to each on a scale of 1 to 10.
+
+SCORING CRITERIA:
+  1-2  (SAFE):      Natural, widely consumed, no known adverse effects.
+                     Examples: Water, Salt (in normal qty), Citric Acid.
+  3-4  (LOW RISK):  Generally safe, minor concerns only at very high doses.
+                     Examples: Sodium Benzoate, Sorbic Acid.
+  5-6  (MODERATE):  Some studies show adverse effects; ADI can be exceeded
+                     with regular consumption. Examples: Aspartame, MSG.
+  7-8  (HIGH RISK): Banned in some countries or linked to health issues in
+                     multiple studies. Examples: Tartrazine, BHA, BHT.
+  9-10 (CRITICAL):  Banned substances, known carcinogens, or potent toxins.
+                     Examples: Trans fats, certain azo dyes, lead contamination.
+
+INSTRUCTIONS:
+1. For each ingredient in the list, consider the database context provided (if any).
+2. If no database data is available, use your scientific knowledge.
+3. Assign the score conservatively — when in doubt, rate slightly higher.
+4. Write a concise one-sentence summary of the ingredient's safety.
+5. Write a detailed harm_explanation (2-4 sentences) covering:
+   - Whether and why it's harmful
+   - How much consumption is actually dangerous
+   - The biological mechanism of harm (if applicable)
+6. Return a JSON array of objects, one for each ingredient, in the exact same order.
+7. Return ONLY valid JSON. No markdown fences, no commentary.
+"""
+
+_BATCH_SCORING_USER_TEMPLATE = """\
+Evaluate the following food ingredients for human consumption toxicity:
+
+INGREDIENTS TO EVALUATE:
+---
+{ingredients_list}
+---
+
+Return a JSON array of objects. Each object must correspond to the ingredient in the list in the same order, and have these exact fields:
+[
+  {{
+    "toxicity_score": <integer 1-10>,
+    "summary": "<one-sentence safety summary>",
+    "harm_explanation": "<2-4 sentence explanation of harm/safety>"
+  }}
+]
+"""
+
 
 def _format_db_context(data: ToxicityData | None) -> str:
     """Format database toxicity data as context for the LLM prompt."""
@@ -172,31 +219,105 @@ def score_ingredient(
     )
 
 
+def _score_all_ingredients_batch(
+    ingredients: list[Ingredient],
+    db_contexts: list[str],
+    toxicity_datas: list[ToxicityData | None],
+) -> list[IngredientScore] | None:
+    """Attempt to score all ingredients in a single batch LLM call."""
+    if not ingredients:
+        return []
+
+    client = _get_client()
+
+    # Format the user prompt
+    items = []
+    for i, ing in enumerate(ingredients):
+        e_str = f" (E-number: {ing.e_number})" if ing.e_number else ""
+        ctx = db_contexts[i]
+        items.append(
+            f"Ingredient [{i + 1}]:\n"
+            f"  Name: {ing.name}{e_str}\n"
+            f"  Category: {ing.category.value}\n"
+            f"  {ctx}\n"
+        )
+    ingredients_list = "\n".join(items)
+
+    user_prompt = _BATCH_SCORING_USER_TEMPLATE.format(ingredients_list=ingredients_list)
+
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=_BATCH_SCORING_SYSTEM_PROMPT,
+                temperature=LLM_TEMPERATURE,
+                response_mime_type="application/json",
+            ),
+        )
+        
+        raw = response.text.strip()
+        logger.debug("Batch scoring LLM output: %s", raw)
+        
+        parsed = json.loads(raw)
+        if not isinstance(parsed, list) or len(parsed) != len(ingredients):
+            logger.warning("Batch scoring output length mismatch or not a list, falling back to individual scoring")
+            return None
+            
+        scores = []
+        for i, item_data in enumerate(parsed):
+            ing = ingredients[i]
+            tox_data = toxicity_datas[i]
+            
+            score_val = int(item_data.get("toxicity_score", 5))
+            score_val = max(1, min(10, score_val))
+            
+            data_sources = []
+            if tox_data:
+                data_sources.append(tox_data.source)
+                
+            scores.append(IngredientScore(
+                ingredient=ing,
+                toxicity_score=score_val,
+                risk_level=RiskLevel.from_score(score_val),
+                summary=item_data.get("summary", "No summary available."),
+                harm_explanation=item_data.get("harm_explanation", "No explanation available."),
+                adi=tox_data.adi if tox_data else None,
+                data_sources=data_sources,
+                toxicity_data=tox_data,
+            ))
+            
+        return scores
+        
+    except Exception as exc:
+        logger.warning("Batch scoring failed: %s. Falling back to individual scoring.", exc)
+        return None
+
+
 def score_all_ingredients(
     ingredients: list[Ingredient],
     db: ToxicityDatabase | None = None,
 ) -> list[IngredientScore]:
     """Score a list of ingredients.
 
-    For each ingredient, looks up toxicity data in the DB (if available)
-    and then calls the LLM scorer.
+    Attempts to score all ingredients in a single batch call to respect rate limits.
+    If the batch call fails, falls back to scoring ingredients one-by-one with
+    a rate-limit-friendly delay.
 
     Args:
         ingredients: List of parsed ingredients.
-        db: Optional ToxicityDatabase instance. If None, a new one is created.
+        db: Optional ToxicityDatabase instance.
 
     Returns:
-        List of IngredientScore objects, one per ingredient.
+        List of IngredientScore objects.
     """
     if db is None:
         db = ToxicityDatabase()
 
-    scores: list[IngredientScore] = []
-
+    # Pre-fetch database context for all ingredients
+    toxicity_datas = []
+    db_contexts = []
     for ingredient in ingredients:
-        logger.info("Scoring ingredient: %s", ingredient.name)
-
-        # Look up by E-number first, then by name
         toxicity_data = None
         try:
             if ingredient.e_number:
@@ -207,8 +328,28 @@ def score_all_ingredients(
             logger.warning(
                 "Toxicity database not found — scoring without DB context"
             )
+        
+        toxicity_datas.append(toxicity_data)
+        db_contexts.append(_format_db_context(toxicity_data))
 
-        score = score_ingredient(ingredient, toxicity_data)
+    # Try batch scoring first
+    logger.info("Attempting batch scoring for %d ingredients using %s...", len(ingredients), GEMINI_MODEL)
+    scores = _score_all_ingredients_batch(ingredients, db_contexts, toxicity_datas)
+    if scores is not None:
+        logger.info("Batch scoring succeeded!")
+        return scores
+
+    # Fallback to individual scoring
+    logger.info("Falling back to individual scoring with rate limit delays...")
+    import time
+    scores = []
+    for i, ingredient in enumerate(ingredients):
+        if i > 0:
+            logger.info("Waiting 4.0 seconds to respect rate limits...")
+            time.sleep(4.0)
+            
+        logger.info("Scoring ingredient [%d/%d]: %s", i + 1, len(ingredients), ingredient.name)
+        score = score_ingredient(ingredient, toxicity_datas[i])
         scores.append(score)
 
     return scores
