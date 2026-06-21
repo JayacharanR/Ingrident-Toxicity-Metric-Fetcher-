@@ -52,13 +52,17 @@ def test_e2e_pipeline(mock_scorer_client, mock_parser_client, tmp_path):
 
     # --- Stage 3 & 4: Lookup + Scoring (Mocked Gemini) ---
     mock_scorer = MagicMock()
-    # Simple sequence of mocked scorer responses for the 4 ingredients
-    res1 = MagicMock(text='{"toxicity_score": 1, "summary": "Safe ingredient.", "harm_explanation": "Potatoes are a natural starch widely consumed as a staple food."}')
-    res2 = MagicMock(text='{"toxicity_score": 2, "summary": "Generally safe.", "harm_explanation": "Vegetable oil is generally safe, though high in fats."}')
-    res3 = MagicMock(text='{"toxicity_score": 2, "summary": "Safe in moderation.", "harm_explanation": "Salt is an essential mineral but high consumption is linked to hypertension."}')
-    res4 = MagicMock(text='{"toxicity_score": 5, "summary": "Moderate risk flavor enhancer.", "harm_explanation": "Monosodium Glutamate is linked to headaches or sensitivity reactions in some individuals."}')
-
-    mock_scorer.models.generate_content.side_effect = [res1, res2, res3, res4]
+    # Mock scorer batch response (JSON array of objects)
+    mock_batch_response = MagicMock()
+    mock_batch_response.text = """
+    [
+        {"toxicity_score": 1, "summary": "Safe ingredient.", "harm_explanation": "Potatoes are a natural starch widely consumed as a staple food."},
+        {"toxicity_score": 2, "summary": "Generally safe.", "harm_explanation": "Vegetable oil is generally safe, though high in fats."},
+        {"toxicity_score": 2, "summary": "Safe in moderation.", "harm_explanation": "Salt is an essential mineral but high consumption is linked to hypertension."},
+        {"toxicity_score": 5, "summary": "Moderate risk flavor enhancer.", "harm_explanation": "Monosodium Glutamate is linked to headaches or sensitivity reactions in some individuals."}
+    ]
+    """
+    mock_scorer.models.generate_content.return_value = mock_batch_response
     mock_scorer_client.return_value = mock_scorer
 
     report = generate_report(

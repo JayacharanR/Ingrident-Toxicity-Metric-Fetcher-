@@ -28,7 +28,7 @@ OCR_LANGUAGE: str = "en"
 OCR_MIN_CONFIDENCE: float = 0.5  # Minimum confidence to keep a detected text box
 
 # --- LLM Settings ---
-GEMINI_MODEL: str = "gemini-2.5-flash"
+GEMINI_MODEL: str = "gemini-3.1-flash-lite"
 LLM_TEMPERATURE: float = 0.1  # Low temperature for factual/consistent outputs
 LLM_MAX_TOKENS: int = 4096
 
