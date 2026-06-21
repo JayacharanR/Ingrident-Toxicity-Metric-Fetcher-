@@ -8,3 +8,26 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Workspace/Notes files
+todo.md
+explanations.md
+
+# Environment variables
+.env
+
+# Data files (large datasets)
+data/raw/
+data/processed/
+data/samples/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Reports
+*.pdf
