@@ -41,6 +41,17 @@ An end-to-end AI pipeline that takes a photo of a food product's ingredient labe
 
 ---
 
+## 🎨 Artificial Food Color & Synthetic Dye Detection
+
+The pipeline features a dedicated lookup and alerting system for artificial food colors and synthetic dyes (covering FD&C, E-numbers/INS, and CI numbers):
+
+* **Smart Resolving:** Automatically maps INS codes (e.g., `E102`, `102`), FD&C names (`FD&C Yellow No. 5`, `Yellow 5`), CI indices (`CI 19140`), and standard names (`Tartrazine`).
+* **Southampton Six Warnings:** Flags the six colorants linked to hyperactivity in children (*Southampton Six*: Tartrazine, Quinoline Yellow, Sunset Yellow, Carmoisine, Ponceau 4R, Allura Red AC) with orange warnings on the dashboard and in generated PDF reports.
+* **Bans & Restructured Dyes:** Automatically alerts on toxic/industrial dyes like Rhodamine B and Sudan Red, or FDA-phased-out colors like FD&C Red No. 3.
+* **Rich Metadata:** Displays chemical class (azo, xanthene, triarylmethane, etc.), CI number, color shade, and specific EFSA/FDA regulatory warnings.
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
