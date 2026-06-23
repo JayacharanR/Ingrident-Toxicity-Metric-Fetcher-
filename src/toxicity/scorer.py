@@ -141,6 +141,22 @@ def _format_db_context(data: ToxicityData | None) -> str:
     if data.known_effects:
         parts.append(f"  - Known Adverse Effects: {', '.join(data.known_effects)}")
 
+    # Artificial colour / dye metadata
+    if data.is_artificial_colour:
+        parts.append("  - ⚠️ ARTIFICIAL FOOD COLOUR / SYNTHETIC DYE")
+        if data.fdc_number:
+            parts.append(f"  - FD&C Designation: {data.fdc_number}")
+        if data.ci_number:
+            parts.append(f"  - Color Index (CI) Number: {data.ci_number}")
+        if data.dye_class:
+            parts.append(f"  - Dye Chemical Class: {data.dye_class}")
+        if data.colour_shade:
+            parts.append(f"  - Colour Shade: {data.colour_shade}")
+        if data.southampton_six:
+            parts.append("  - 🏷️ SOUTHAMPTON SIX: Requires 'may have adverse effect on activity and attention in children' warning in EU")
+        if data.fda_phase_out:
+            parts.append("  - 🇺🇸 FDA PHASE-OUT: Targeted for removal from US food supply by 2026")
+
     return "\n".join(parts)
 
 
@@ -216,6 +232,7 @@ def score_ingredient(
         adi=toxicity_data.adi if toxicity_data else None,
         data_sources=data_sources,
         toxicity_data=toxicity_data,
+        is_artificial_colour=toxicity_data.is_artificial_colour if toxicity_data else False,
     )
 
 
@@ -285,6 +302,7 @@ def _score_all_ingredients_batch(
                 adi=tox_data.adi if tox_data else None,
                 data_sources=data_sources,
                 toxicity_data=tox_data,
+                is_artificial_colour=tox_data.is_artificial_colour if tox_data else False,
             ))
             
         return scores
@@ -320,8 +338,13 @@ def score_all_ingredients(
     for ingredient in ingredients:
         toxicity_data = None
         try:
+            # Try E-number lookup first
             if ingredient.e_number:
                 toxicity_data = db.lookup_by_e_number(ingredient.e_number)
+            # Try FD&C number lookup
+            if toxicity_data is None and ingredient.fdc_number:
+                toxicity_data = db.lookup_by_fdc_number(ingredient.fdc_number)
+            # Fall back to name lookup
             if toxicity_data is None:
                 toxicity_data = db.lookup(ingredient.name)
         except FileNotFoundError:

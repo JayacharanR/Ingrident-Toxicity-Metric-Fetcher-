@@ -51,11 +51,19 @@ CREATE TABLE IF NOT EXISTS substances (
     safety_opinion TEXT,
     banned_in   TEXT,
     known_effects TEXT,
+    is_artificial_colour INTEGER DEFAULT 0,
+    fdc_number  TEXT,
+    ci_number   TEXT,
+    colour_shade TEXT,
+    dye_class   TEXT,
+    southampton_six INTEGER DEFAULT 0,
+    fda_phase_out INTEGER DEFAULT 0,
     UNIQUE(name, source)
 );
 
 CREATE INDEX IF NOT EXISTS idx_substances_name ON substances(name COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS idx_substances_e_number ON substances(e_number COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_substances_fdc_number ON substances(fdc_number COLLATE NOCASE);
 """
 
 
@@ -108,16 +116,34 @@ _SEED_DATA: list[dict] = [
     {"name": "Sorbitol", "e_number": "E420", "source": "JECFA", "adi": "Not limited", "safety_opinion": "Safe sugar alcohol", "known_effects": "Laxative effect at high doses (>20g/day)"},
     {"name": "High Fructose Corn Syrup", "source": "FDA GRAS", "adi": "No established ADI", "safety_opinion": "GRAS but controversial", "known_effects": "Obesity|Insulin resistance|Non-alcoholic fatty liver disease"},
 
-    # --- Colorants ---
-    {"name": "Tartrazine", "e_number": "E102", "source": "EFSA", "adi": "0-7.5 mg/kg bw/day", "safety_opinion": "Approved; must carry warning label in EU", "known_effects": "Hyperactivity in children|Allergic reactions|Aspirin sensitivity cross-reaction", "banned_in": "Norway (formerly)|Austria (formerly)"},
-    {"name": "Sunset Yellow", "e_number": "E110", "source": "EFSA", "adi": "0-4 mg/kg bw/day", "safety_opinion": "Approved with warning label in EU", "known_effects": "Hyperactivity in children|Allergic reactions", "banned_in": "Norway (formerly)|Finland (formerly)"},
-    {"name": "Allura Red", "e_number": "E129", "source": "EFSA", "adi": "0-7 mg/kg bw/day", "safety_opinion": "Approved; requires warning in EU", "known_effects": "Hyperactivity in children|Allergic reactions|Possible gut inflammation"},
-    {"name": "Brilliant Blue", "e_number": "E133", "source": "EFSA", "adi": "0-6 mg/kg bw/day", "safety_opinion": "Generally safe", "known_effects": "Allergic reactions (rare)"},
-    {"name": "Titanium Dioxide", "e_number": "E171", "source": "EFSA", "adi": "No safe ADI established (EFSA 2021)", "safety_opinion": "BANNED in EU since 2022; still allowed in US", "known_effects": "Genotoxicity concerns|Nanoparticle accumulation|Possible DNA damage", "banned_in": "European Union"},
-    {"name": "Carmoisine", "e_number": "E122", "source": "EFSA", "adi": "0-4 mg/kg bw/day", "safety_opinion": "Approved with warning label in EU", "known_effects": "Hyperactivity in children|Allergic reactions"},
-    {"name": "Erythrosine", "e_number": "E127", "source": "EFSA", "adi": "0-0.1 mg/kg bw/day", "safety_opinion": "Restricted use in EU", "known_effects": "Thyroid disruption|Phototoxicity|Possible carcinogen at high doses"},
+    # --- Colorants (upgraded with dye metadata) ---
+    {"name": "Tartrazine", "e_number": "E102", "source": "EFSA", "adi": "0-7.5 mg/kg bw/day", "safety_opinion": "Approved; must carry warning label in EU (Southampton Six)", "known_effects": "Hyperactivity in children|Allergic reactions|Aspirin sensitivity cross-reaction|Urticaria", "banned_in": "Norway (formerly)|Austria (formerly)", "is_artificial_colour": 1, "fdc_number": "FD&C Yellow 5", "ci_number": "19140", "colour_shade": "Yellow", "dye_class": "Azo dye", "southampton_six": 1, "fda_phase_out": 1},
+    {"name": "Sunset Yellow FCF", "e_number": "E110", "source": "EFSA", "adi": "0-4 mg/kg bw/day", "safety_opinion": "Approved with warning label in EU (Southampton Six)", "known_effects": "Hyperactivity in children|Allergic reactions|Possible genotoxicity concerns", "banned_in": "Norway (formerly)|Finland (formerly)", "is_artificial_colour": 1, "fdc_number": "FD&C Yellow 6", "ci_number": "15985", "colour_shade": "Orange-Yellow", "dye_class": "Azo dye", "southampton_six": 1, "fda_phase_out": 1},
+    {"name": "Allura Red AC", "e_number": "E129", "source": "EFSA", "adi": "0-7 mg/kg bw/day", "safety_opinion": "Approved; requires warning in EU (Southampton Six)", "known_effects": "Hyperactivity in children|Allergic reactions|Possible gut inflammation|Colonic hypersensitivity (animal studies)", "is_artificial_colour": 1, "fdc_number": "FD&C Red 40", "ci_number": "16035", "colour_shade": "Red", "dye_class": "Azo dye", "southampton_six": 1, "fda_phase_out": 1},
+    {"name": "Brilliant Blue FCF", "e_number": "E133", "source": "EFSA", "adi": "0-6 mg/kg bw/day", "safety_opinion": "Generally safe; FDA targeting for phase-out by 2026", "known_effects": "Allergic reactions (rare)|Chromosomal aberrations in some in-vitro studies", "is_artificial_colour": 1, "fdc_number": "FD&C Blue 1", "ci_number": "42090", "colour_shade": "Blue", "dye_class": "Triarylmethane dye", "southampton_six": 0, "fda_phase_out": 1},
+    {"name": "Titanium Dioxide", "e_number": "E171", "source": "EFSA", "adi": "No safe ADI established (EFSA 2021)", "safety_opinion": "BANNED in EU since 2022; still allowed in US", "known_effects": "Genotoxicity concerns|Nanoparticle accumulation|Possible DNA damage|Gut microbiome disruption", "banned_in": "European Union", "is_artificial_colour": 1, "ci_number": "77891", "colour_shade": "White", "dye_class": "Inorganic pigment"},
+    {"name": "Carmoisine", "e_number": "E122", "source": "EFSA", "adi": "0-4 mg/kg bw/day", "safety_opinion": "Approved with warning label in EU (Southampton Six)", "known_effects": "Hyperactivity in children|Allergic reactions|Not approved in US, Canada, Japan, Norway", "banned_in": "USA|Canada|Japan|Norway", "is_artificial_colour": 1, "ci_number": "14720", "colour_shade": "Red", "dye_class": "Azo dye", "southampton_six": 1},
+    {"name": "Erythrosine", "e_number": "E127", "source": "FDA/EFSA", "adi": "0-0.1 mg/kg bw/day", "noael": "251 mg/kg/day (male rats)", "safety_opinion": "FDA REVOKED authorization Jan 2025; removal deadline 2027 (food) / 2028 (drugs). Restricted in EU.", "known_effects": "Thyroid tumors in male rats|Thyroid hormone disruption|Phototoxicity|Possible carcinogen at high doses", "is_artificial_colour": 1, "fdc_number": "FD&C Red 3", "ci_number": "45430", "colour_shade": "Red", "dye_class": "Xanthene dye", "fda_phase_out": 1},
     {"name": "Annatto", "e_number": "E160b", "source": "JECFA", "adi": "0-0.065 mg/kg bw/day (bixin)", "safety_opinion": "Safe natural colorant", "known_effects": "Rare allergic reactions"},
     {"name": "Beta-Carotene", "e_number": "E160a", "source": "EFSA", "adi": "0-5 mg/kg bw/day", "safety_opinion": "Safe — provitamin A", "known_effects": "Carotenodermia (harmless skin yellowing) at high intake"},
+
+    # --- Additional Artificial Colours / Dyes ---
+    {"name": "Quinoline Yellow", "e_number": "E104", "source": "EFSA", "adi": "0-0.5 mg/kg bw/day (EFSA); 0-3 mg/kg bw/day (JECFA)", "safety_opinion": "Approved in EU with warning label; banned in US, Canada, Japan", "known_effects": "Hyperactivity in children|Allergic reactions|Dermatitis", "banned_in": "USA|Canada|Japan|Norway", "is_artificial_colour": 1, "fdc_number": "FD&C Yellow 10", "ci_number": "47005", "colour_shade": "Yellow-Green", "dye_class": "Quinoline dye", "southampton_six": 1},
+    {"name": "Amaranth", "e_number": "E123", "source": "EFSA", "adi": "0-0.15 mg/kg bw/day", "safety_opinion": "BANNED in USA since 1976 (suspected carcinogen); highly restricted in EU (alcoholic beverages and fish roe only)", "known_effects": "Suspected carcinogen|Teratogenic effects in animal studies|Allergic reactions|Hyperactivity", "banned_in": "USA|Norway", "is_artificial_colour": 1, "ci_number": "16185", "colour_shade": "Dark Red", "dye_class": "Azo dye", "hazard_class": "Carc. 2 (suspected)"},
+    {"name": "Ponceau 4R", "e_number": "E124", "source": "EFSA", "adi": "0-0.7 mg/kg bw/day (EFSA); 0-4 mg/kg bw/day (JECFA)", "safety_opinion": "Approved in EU with warning label (Southampton Six); banned in US and Canada", "known_effects": "Hyperactivity in children|Allergic reactions|Aspirin sensitivity cross-reaction|Possible genotoxicity", "banned_in": "USA|Canada|Norway", "is_artificial_colour": 1, "ci_number": "16255", "colour_shade": "Red", "dye_class": "Azo dye", "southampton_six": 1},
+    {"name": "Patent Blue V", "e_number": "E131", "source": "EFSA", "adi": "0-5 mg/kg bw/day", "safety_opinion": "Permitted in EU; not approved in US, Australia", "known_effects": "Allergic reactions|Anaphylaxis (rare)|Nausea", "banned_in": "USA|Australia", "is_artificial_colour": 1, "ci_number": "42051", "colour_shade": "Blue", "dye_class": "Triarylmethane dye"},
+    {"name": "Indigo Carmine", "e_number": "E132", "source": "JECFA", "adi": "0-5 mg/kg bw/day", "safety_opinion": "Approved; FDA targeting for phase-out by 2026", "known_effects": "Nausea|Hypertension|Allergic skin reactions|Possible tumor incidence in animal studies", "is_artificial_colour": 1, "fdc_number": "FD&C Blue 2", "ci_number": "73015", "colour_shade": "Blue", "dye_class": "Indigoid dye", "fda_phase_out": 1},
+    {"name": "Fast Green FCF", "e_number": "E143", "source": "FDA", "adi": "0-25 mg/kg bw/day", "safety_opinion": "Approved; FDA targeting for phase-out by 2026. Not widely used in EU.", "known_effects": "Allergic reactions|Possible tumor promotion in animal studies (debated)|Bladder tumors in high-dose studies", "is_artificial_colour": 1, "fdc_number": "FD&C Green 3", "ci_number": "42053", "colour_shade": "Green", "dye_class": "Triarylmethane dye", "fda_phase_out": 1},
+    {"name": "Brown HT", "e_number": "E155", "source": "EFSA", "adi": "0-1.5 mg/kg bw/day", "safety_opinion": "Approved in EU; not approved in US, Canada, Japan, Australia", "known_effects": "Allergic reactions|Aspirin sensitivity|Hyperactivity (possible)", "banned_in": "USA|Canada|Japan|Australia", "is_artificial_colour": 1, "ci_number": "20285", "colour_shade": "Brown", "dye_class": "Azo dye"},
+    {"name": "Litholrubine BK", "e_number": "E180", "source": "EFSA", "adi": "0-1.5 mg/kg bw/day", "safety_opinion": "Restricted use — cheese rind only in EU", "known_effects": "Allergic reactions|Limited toxicity data available", "is_artificial_colour": 1, "ci_number": "15850", "colour_shade": "Red", "dye_class": "Azo dye"},
+    {"name": "Citrus Red No. 2", "source": "FDA/IARC", "adi": "No safe ADI established", "safety_opinion": "Restricted to orange skin colouring only in US; IARC Group 2B carcinogen. FDA revoking authorization.", "known_effects": "Possible carcinogen (IARC Group 2B)|Bladder tumors in animal studies|Not approved for food ingestion", "banned_in": "EU|Most countries (not approved for food)", "is_artificial_colour": 1, "fdc_number": "Citrus Red 2", "ci_number": "12156", "colour_shade": "Red", "dye_class": "Azo dye", "hazard_class": "Carc. 2B (IARC)", "fda_phase_out": 1},
+    {"name": "Orange B", "source": "FDA", "adi": "Delisted — no longer authorized", "safety_opinion": "Formerly used in sausage casings; no longer used due to 2-naphthylamine carcinogen contamination. FDA revoking.", "known_effects": "2-naphthylamine contamination (carcinogen)|Bladder cancer risk", "banned_in": "EU|Most countries", "is_artificial_colour": 1, "fdc_number": "Orange B", "colour_shade": "Orange", "dye_class": "Azo dye", "hazard_class": "Carc. 1 (contaminant)", "fda_phase_out": 1},
+    {"name": "Metanil Yellow", "source": "FSSAI/Curated", "adi": "No safe level — not a food additive", "safety_opinion": "BANNED worldwide as food additive. Industrial textile/leather dye illegally used as adulterant in turmeric, sweets, pulses.", "known_effects": "Carcinogenic|Hepatotoxicity (liver damage)|Nephrotoxicity (kidney damage)|Neurotoxicity|Testicular degeneration|Oxidative stress", "banned_in": "Worldwide (not approved as food additive)", "is_artificial_colour": 1, "ci_number": "13065", "colour_shade": "Yellow", "dye_class": "Azo dye", "hazard_class": "Acute Tox. 3 (Oral)"},
+    {"name": "Malachite Green", "source": "Curated", "adi": "No safe level — not a food additive", "safety_opinion": "BANNED — industrial dye illegally used in fish/seafood to mask freshness. Carcinogenic and mutagenic.", "known_effects": "Carcinogenic|Mutagenic|Teratogenic|Organ toxicity|Respiratory toxicity", "banned_in": "Worldwide (not approved as food additive)", "is_artificial_colour": 1, "ci_number": "42000", "colour_shade": "Green", "dye_class": "Triarylmethane dye", "hazard_class": "Carc. 2"},
+    {"name": "Auramine O", "source": "Curated", "adi": "No safe level — not a food additive", "safety_opinion": "BANNED — industrial dye. Illegally used to colour noodles, tofu, and snacks in some regions.", "known_effects": "Carcinogenic (IARC Group 2B)|Liver damage|Kidney damage|Bladder tumors", "banned_in": "Worldwide (not approved as food additive)", "is_artificial_colour": 1, "ci_number": "41000", "colour_shade": "Yellow", "dye_class": "Diarylmethane dye", "hazard_class": "Carc. 2B (IARC)"},
+    {"name": "Sudan I", "source": "Curated/IARC", "adi": "No safe level", "safety_opinion": "BANNED — industrial azo dye, not a food additive. Found as contaminant in chili powder and spices.", "known_effects": "Carcinogenic (IARC Group 3)|Genotoxic|Liver tumors|Bladder tumors", "banned_in": "Worldwide (not approved as food additive)", "is_artificial_colour": 1, "ci_number": "12055", "colour_shade": "Red-Orange", "dye_class": "Azo dye", "hazard_class": "Carc. 2"},
+    {"name": "Sudan III", "source": "Curated", "adi": "No safe level", "safety_opinion": "BANNED — industrial dye. Not approved for food use anywhere.", "known_effects": "Carcinogenic|Genotoxic|Liver damage", "banned_in": "Worldwide (not approved as food additive)", "is_artificial_colour": 1, "ci_number": "26100", "colour_shade": "Red", "dye_class": "Azo dye", "hazard_class": "Carc. 2"},
+    {"name": "Sudan IV", "source": "Curated", "adi": "No safe level", "safety_opinion": "BANNED — industrial dye. Not approved for food use anywhere.", "known_effects": "Carcinogenic|Genotoxic|Liver damage|Bladder damage", "banned_in": "Worldwide (not approved as food additive)", "is_artificial_colour": 1, "ci_number": "26105", "colour_shade": "Red", "dye_class": "Azo dye", "hazard_class": "Carc. 2"},
 
     # --- Emulsifiers / Stabilizers ---
     {"name": "Carrageenan", "e_number": "E407", "source": "JECFA", "adi": "Not limited (food-grade)", "safety_opinion": "Approved; degraded carrageenan is harmful", "known_effects": "Gut inflammation (debated)|Possible colon tumor promotion"},
@@ -154,8 +180,8 @@ _SEED_DATA: list[dict] = [
     {"name": "Azodicarbonamide", "source": "Curated", "adi": "0-0.045 mg/kg bw/day", "safety_opinion": "BANNED in EU and Australia; allowed in US", "known_effects": "Respiratory sensitizer|Decomposes to semicarbazide (possible carcinogen)", "banned_in": "EU|Australia|Singapore", "hazard_class": "Resp. Sens. 1"},
     {"name": "Brominated Vegetable Oil", "source": "FDA", "adi": "No established ADI", "safety_opinion": "BANNED in US (2024), EU, Japan, India", "known_effects": "Bromine accumulation in tissue|Memory loss|Skin lesions|Organ damage", "banned_in": "USA|EU|Japan|India"},
     {"name": "Olestra", "source": "FDA", "adi": "No established ADI", "safety_opinion": "Approved in US; banned in UK and Canada", "known_effects": "Inhibits absorption of fat-soluble vitamins|Anal leakage|Cramping", "banned_in": "UK|Canada"},
-    {"name": "Rhodamine B", "source": "Curated", "adi": "No safe level", "safety_opinion": "BANNED — industrial dye, not a food additive", "known_effects": "Carcinogenic|Mutagenic|Organ toxicity", "banned_in": "Worldwide (not approved as food additive)", "hazard_class": "Carc. 2"},
-    {"name": "Sudan Red", "source": "Curated", "adi": "No safe level", "safety_opinion": "BANNED — industrial dye, not a food additive", "known_effects": "Carcinogenic (IARC Group 3)|Genotoxic|Liver damage", "banned_in": "Worldwide (not approved as food additive)", "hazard_class": "Carc. 2"},
+    {"name": "Rhodamine B", "source": "Curated", "adi": "No safe level", "safety_opinion": "BANNED — industrial dye, not a food additive", "known_effects": "Carcinogenic|Mutagenic|Organ toxicity|Neurotoxicity", "banned_in": "Worldwide (not approved as food additive)", "hazard_class": "Carc. 2", "is_artificial_colour": 1, "ci_number": "45170", "colour_shade": "Pink-Red", "dye_class": "Xanthene dye"},
+    {"name": "Sudan Red", "source": "Curated", "adi": "No safe level", "safety_opinion": "BANNED — industrial dye, not a food additive", "known_effects": "Carcinogenic (IARC Group 3)|Genotoxic|Liver damage", "banned_in": "Worldwide (not approved as food additive)", "hazard_class": "Carc. 2", "is_artificial_colour": 1, "ci_number": "12150", "colour_shade": "Red", "dye_class": "Azo dye"},
 
     # --- Common Indian food additives ---
     {"name": "Calcium Carbonate", "e_number": "E170", "source": "JECFA", "adi": "Not limited", "safety_opinion": "GRAS — chalk / mineral supplement", "known_effects": ""},
@@ -222,8 +248,10 @@ def _insert_seed_data(conn: sqlite3.Connection) -> int:
             conn.execute(
                 """INSERT OR IGNORE INTO substances
                    (name, e_number, source, adi, noael, hazard_class,
-                    safety_opinion, banned_in, known_effects)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    safety_opinion, banned_in, known_effects,
+                    is_artificial_colour, fdc_number, ci_number,
+                    colour_shade, dye_class, southampton_six, fda_phase_out)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     item.get("name"),
                     item.get("e_number"),
@@ -234,6 +262,13 @@ def _insert_seed_data(conn: sqlite3.Connection) -> int:
                     item.get("safety_opinion"),
                     item.get("banned_in"),
                     item.get("known_effects"),
+                    item.get("is_artificial_colour", 0),
+                    item.get("fdc_number"),
+                    item.get("ci_number"),
+                    item.get("colour_shade"),
+                    item.get("dye_class"),
+                    item.get("southampton_six", 0),
+                    item.get("fda_phase_out", 0),
                 ),
             )
             count += 1

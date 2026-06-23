@@ -68,6 +68,10 @@ class Ingredient(BaseModel):
         default=None,
         description="E-number if the ingredient is a food additive (e.g. E621)",
     )
+    fdc_number: str | None = Field(
+        default=None,
+        description="FD&C dye designation if applicable (e.g. 'FD&C Red 40')",
+    )
     category: FunctionalCategory = Field(
         default=FunctionalCategory.OTHER,
         description="Functional category of the ingredient",
@@ -106,6 +110,36 @@ class ToxicityData(BaseModel):
         description="Known adverse health effects from literature",
     )
 
+    # --- Artificial colour / dye metadata ---
+    is_artificial_colour: bool = Field(
+        default=False,
+        description="True if this substance is a synthetic food colorant/dye",
+    )
+    fdc_number: str | None = Field(
+        default=None,
+        description="FD&C dye designation (e.g. 'FD&C Red 40', 'FD&C Yellow 5')",
+    )
+    ci_number: str | None = Field(
+        default=None,
+        description="Color Index number (e.g. '16035', '19140')",
+    )
+    colour_shade: str | None = Field(
+        default=None,
+        description="Primary colour shade (e.g. 'Red', 'Yellow', 'Blue')",
+    )
+    dye_class: str | None = Field(
+        default=None,
+        description="Chemical dye class (e.g. 'Azo dye', 'Triarylmethane', 'Xanthene')",
+    )
+    southampton_six: bool = Field(
+        default=False,
+        description="True if part of the EU 'Southampton Six' (requires warning label)",
+    )
+    fda_phase_out: bool = Field(
+        default=False,
+        description="True if targeted for FDA 2025-2026 phase-out from US food supply",
+    )
+
 
 class IngredientScore(BaseModel):
     """Complete toxicity assessment for a single ingredient."""
@@ -140,6 +174,10 @@ class IngredientScore(BaseModel):
     toxicity_data: ToxicityData | None = Field(
         default=None,
         description="Raw toxicity data from the knowledge base",
+    )
+    is_artificial_colour: bool = Field(
+        default=False,
+        description="True if this ingredient is a synthetic food colorant/dye",
     )
 
 

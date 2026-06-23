@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from typing import cast
+
 import cv2
 import numpy as np
 from numpy.typing import NDArray
@@ -36,7 +38,7 @@ def load_image(image_path: str | Path) -> NDArray[np.uint8]:
     if img is None:
         raise ValueError(f"Could not decode image: {path}")
 
-    return img
+    return cast(NDArray[np.uint8], img)
 
 
 def resize_image(
@@ -61,14 +63,14 @@ def resize_image(
     scale = min(max_width / w, max_height / h)
     new_w = int(w * scale)
     new_h = int(h * scale)
-    return cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    return cast(NDArray[np.uint8], cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA))
 
 
 def to_grayscale(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
     """Convert a BGR image to grayscale."""
     if len(image.shape) == 2:
         return image  # Already grayscale
-    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    return cast(NDArray[np.uint8], cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
 
 
 def enhance_contrast(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
@@ -78,12 +80,12 @@ def enhance_contrast(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
     taken in poor lighting.
     """
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    return clahe.apply(image)
+    return cast(NDArray[np.uint8], clahe.apply(image))
 
 
 def denoise(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
     """Remove noise while preserving edges using a bilateral filter."""
-    return cv2.bilateralFilter(image, d=9, sigmaColor=75, sigmaSpace=75)
+    return cast(NDArray[np.uint8], cv2.bilateralFilter(image, d=9, sigmaColor=75, sigmaSpace=75))
 
 
 def adaptive_threshold(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
@@ -91,13 +93,16 @@ def adaptive_threshold(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
 
     This works well on labels with uneven lighting or shadows.
     """
-    return cv2.adaptiveThreshold(
-        image,
-        maxValue=255,
-        adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        thresholdType=cv2.THRESH_BINARY,
-        blockSize=11,
-        C=2,
+    return cast(
+        NDArray[np.uint8],
+        cv2.adaptiveThreshold(
+            image,
+            maxValue=255,
+            adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            thresholdType=cv2.THRESH_BINARY,
+            blockSize=11,
+            C=2,
+        ),
     )
 
 
@@ -125,12 +130,15 @@ def deskew(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
     h, w = image.shape[:2]
     center = (w // 2, h // 2)
     rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-    return cv2.warpAffine(
-        image,
-        rotation_matrix,
-        (w, h),
-        flags=cv2.INTER_CUBIC,
-        borderMode=cv2.BORDER_REPLICATE,
+    return cast(
+        NDArray[np.uint8],
+        cv2.warpAffine(
+            image,
+            rotation_matrix,
+            (w, h),
+            flags=cv2.INTER_CUBIC,
+            borderMode=cv2.BORDER_REPLICATE,
+        ),
     )
 
 
@@ -142,7 +150,7 @@ def sharpen(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
          [0, -1, 0]],
         dtype=np.float32,
     )
-    return cv2.filter2D(image, -1, kernel)
+    return cast(NDArray[np.uint8], cv2.filter2D(image, -1, kernel))
 
 
 def preprocess(

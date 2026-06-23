@@ -385,11 +385,20 @@ def _display_results(report) -> None:
         color = _RISK_COLORS[item.risk_level]
         icon = _RISK_ICONS[item.risk_level]
 
+        # Build dye badge HTML if it's an artificial colour
+        dye_badge = ""
+        if item.is_artificial_colour:
+            dye_badge = (
+                '<span style="display: inline-block; background: linear-gradient(135deg, #7c3aed, #a855f7); '
+                'color: white; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.7rem; '
+                'font-weight: 600; margin-left: 0.5rem; vertical-align: middle;">🎨 SYNTHETIC DYE</span>'
+            )
+
         with st.container():
             st.markdown(f"""
             <div class="ingredient-card" style="border-left-color: {color};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4>{icon} {item.ingredient.name}</h4>
+                    <h4>{icon} {item.ingredient.name}{dye_badge}</h4>
                     <span class="score-badge" style="background: {color}; color: white;">
                         {item.toxicity_score}/10 — {item.risk_level.value}
                     </span>
@@ -402,14 +411,44 @@ def _display_results(report) -> None:
                 detail_cols = st.columns([2, 1])
                 with detail_cols[0]:
                     st.markdown(f"**Why it's harmful (or safe):**\n\n{item.harm_explanation}")
+
+                    # Show dye warnings if artificial colour
+                    if item.is_artificial_colour and item.toxicity_data:
+                        td = item.toxicity_data
+                        if td.southampton_six:
+                            st.warning(
+                                "🏷️ **Southampton Six** — This dye is one of the six colours "
+                                "that must carry the warning *'may have an adverse effect on "
+                                "activity and attention in children'* in the EU."
+                            )
+                        if td.fda_phase_out:
+                            st.error(
+                                "🇺🇸 **FDA Phase-Out** — This dye is targeted for removal "
+                                "from the US food supply by 2026."
+                            )
+
                 with detail_cols[1]:
                     if item.ingredient.e_number:
                         st.markdown(f"**E-Number:** {item.ingredient.e_number}")
+                    if item.ingredient.fdc_number:
+                        st.markdown(f"**FD&C Number:** {item.ingredient.fdc_number}")
                     st.markdown(f"**Category:** {item.ingredient.category.value}")
                     if item.adi:
                         st.markdown(f"**ADI:** {item.adi}")
                     if item.data_sources:
                         st.markdown(f"**Sources:** {', '.join(item.data_sources)}")
+
+                    # Dye-specific metadata
+                    if item.is_artificial_colour and item.toxicity_data:
+                        td = item.toxicity_data
+                        st.markdown("---")
+                        st.markdown("**🧪 Dye Information**")
+                        if td.ci_number:
+                            st.markdown(f"**CI Number:** {td.ci_number}")
+                        if td.dye_class:
+                            st.markdown(f"**Dye Class:** {td.dye_class}")
+                        if td.colour_shade:
+                            st.markdown(f"**Colour:** {td.colour_shade}")
 
     # --- Export Options ---
     st.markdown("---")

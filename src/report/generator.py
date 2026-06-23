@@ -219,9 +219,15 @@ def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
         pdf.set_fill_color(*risk_color)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Helvetica", "B", 10)
+
+        # Add "SYNTHETIC DYE" tag for artificial colours
+        name_label = _clean_pdf_text(item.ingredient.name)
+        if item.is_artificial_colour:
+            name_label = f"[SYNTHETIC DYE] {name_label}"
+
         pdf.cell(
             0, 8,
-            f"  {_clean_pdf_text(item.ingredient.name)}  -  Score: {item.toxicity_score}/10 ({item.risk_level.value})",
+            f"  {name_label}  -  Score: {item.toxicity_score}/10 ({item.risk_level.value})",
             fill=True, new_x="LMARGIN", new_y="NEXT",
         )
 
@@ -234,6 +240,38 @@ def generate_pdf(report: ProductReport, output_path: str | Path) -> Path:
 
         if item.data_sources:
             pdf.cell(0, 5, f"Sources: {_clean_pdf_text(', '.join(item.data_sources))}", new_x="LMARGIN", new_y="NEXT")
+
+        # Dye-specific metadata
+        if item.is_artificial_colour and item.toxicity_data:
+            td = item.toxicity_data
+            dye_parts = []
+            if td.fdc_number:
+                dye_parts.append(f"FD&C: {td.fdc_number}")
+            if item.ingredient.e_number:
+                dye_parts.append(f"E-Number: {item.ingredient.e_number}")
+            if td.ci_number:
+                dye_parts.append(f"CI: {td.ci_number}")
+            if td.dye_class:
+                dye_parts.append(f"Class: {td.dye_class}")
+            if td.colour_shade:
+                dye_parts.append(f"Colour: {td.colour_shade}")
+            if dye_parts:
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.set_text_color(124, 58, 237)  # Purple for dye info
+                pdf.cell(0, 5, f"Dye Info: {' | '.join(dye_parts)}", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_text_color(60, 60, 60)
+
+            if td.southampton_six:
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.set_text_color(234, 179, 8)  # Yellow/amber
+                pdf.cell(0, 5, "[SOUTHAMPTON SIX] EU warning required: 'may affect activity and attention in children'", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_text_color(60, 60, 60)
+
+            if td.fda_phase_out:
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.set_text_color(239, 68, 68)  # Red
+                pdf.cell(0, 5, "[FDA PHASE-OUT] Targeted for removal from US food supply by 2026", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_text_color(60, 60, 60)
 
         pdf.ln(1)
         pdf.set_font("Helvetica", "I", 9)

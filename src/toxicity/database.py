@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from thefuzz import fuzz, process
 
@@ -123,16 +124,7 @@ class ToxicityDatabase:
         if row is None:
             return None
 
-        return ToxicityData(
-            ingredient_name=row["name"],
-            source=row["source"] or "Unknown",
-            adi=row["adi"],
-            noael=row["noael"],
-            hazard_class=row["hazard_class"],
-            safety_opinion=row["safety_opinion"],
-            banned_in=_parse_list(row["banned_in"]),
-            known_effects=_parse_list(row["known_effects"]),
-        )
+        return _row_to_toxicity_data(row)
 
     def lookup_by_e_number(self, e_number: str) -> ToxicityData | None:
         """Look up toxicity data by E-number (e.g. 'E621').
@@ -152,20 +144,91 @@ class ToxicityDatabase:
         if row is None:
             return None
 
-        return ToxicityData(
-            ingredient_name=row["name"],
-            source=row["source"] or "Unknown",
-            adi=row["adi"],
-            noael=row["noael"],
-            hazard_class=row["hazard_class"],
-            safety_opinion=row["safety_opinion"],
-            banned_in=_parse_list(row["banned_in"]),
-            known_effects=_parse_list(row["known_effects"]),
+        return _row_to_toxicity_data(row)
+
+    def lookup_by_fdc_number(self, fdc_number: str) -> ToxicityData | None:
+        """Look up toxicity data by FD&C number (e.g. 'FD&C Red 40').
+
+        Performs a case-insensitive search. Also matches partial FD&C
+        references like 'Red 40' against stored values like 'FD&C Red 40'.
+
+        Args:
+            fdc_number: The FD&C number string.
+
+        Returns:
+            ToxicityData if found, else None.
+        """
+        conn = self._connect()
+
+        # Try exact match first
+        cursor = conn.execute(
+            "SELECT * FROM substances WHERE fdc_number = ? COLLATE NOCASE",
+            (fdc_number,),
         )
+        row = cursor.fetchone()
+        if row is not None:
+            return _row_to_toxicity_data(row)
+
+        # Try matching with "FD&C " prefix
+        if not fdc_number.upper().startswith("FD&C"):
+            prefixed = f"FD&C {fdc_number}"
+            cursor = conn.execute(
+                "SELECT * FROM substances WHERE fdc_number = ? COLLATE NOCASE",
+                (prefixed,),
+            )
+            row = cursor.fetchone()
+            if row is not None:
+                return _row_to_toxicity_data(row)
+
+        return None
 
     def get_all_substances(self) -> list[str]:
         """Return all substance names in the database."""
         return list(self._get_all_names())
+
+    def get_all_artificial_colours(self) -> list[dict]:
+        """Return all artificial colour entries from the database.
+
+        Returns:
+            List of dicts with colour metadata (name, e_number, fdc_number, etc).
+        """
+        conn = self._connect()
+        cursor = conn.execute(
+            "SELECT name, e_number, fdc_number, ci_number, colour_shade, "
+            "dye_class, southampton_six, fda_phase_out "
+            "FROM substances WHERE is_artificial_colour = 1 "
+            "ORDER BY name"
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def _safe_get(row: Any, key: str, default: Any = None) -> Any:
+    """Safely get a value from a sqlite3.Row, returning default if column missing."""
+    try:
+        return row[key]
+    except (IndexError, KeyError):
+        return default
+
+
+def _row_to_toxicity_data(row: Any) -> ToxicityData:
+    """Convert a sqlite3.Row to a ToxicityData object."""
+    return ToxicityData(
+        ingredient_name=row["name"],
+        source=row["source"] or "Unknown",
+        adi=row["adi"],
+        noael=row["noael"],
+        hazard_class=row["hazard_class"],
+        safety_opinion=row["safety_opinion"],
+        banned_in=_parse_list(row["banned_in"]),
+        known_effects=_parse_list(row["known_effects"]),
+        is_artificial_colour=bool(_safe_get(row, "is_artificial_colour", 0)),
+        fdc_number=_safe_get(row, "fdc_number"),
+        ci_number=_safe_get(row, "ci_number"),
+        colour_shade=_safe_get(row, "colour_shade"),
+        dye_class=_safe_get(row, "dye_class"),
+        southampton_six=bool(_safe_get(row, "southampton_six", 0)),
+        fda_phase_out=bool(_safe_get(row, "fda_phase_out", 0)),
+    )
 
 
 def _parse_list(value: str | None) -> list[str]:
@@ -173,3 +236,4 @@ def _parse_list(value: str | None) -> list[str]:
     if not value:
         return []
     return [item.strip() for item in value.split("|") if item.strip()]
+

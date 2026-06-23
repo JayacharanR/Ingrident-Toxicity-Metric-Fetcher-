@@ -33,9 +33,22 @@ RULES:
 4. For each ingredient, determine:
    - name: The standardized, correctly-spelled ingredient name.
    - e_number: The E-number code if applicable (e.g. "E621"), or null.
+   - fdc_number: The FD&C dye designation if applicable (e.g. "FD&C Red 40",
+     "FD&C Yellow 5"), or null.
    - category: One of the allowed functional categories.
 5. If the text contains NO recognizable ingredients, return an empty list.
 6. Return ONLY valid JSON. No markdown fences, no commentary.
+
+ARTIFICIAL COLOUR DETECTION:
+- Detect FD&C dye references like "Red 40", "Yellow 5", "Blue 1", "Red No. 3"
+  and map them to full FD&C designations (e.g. "FD&C Red 40").
+- Detect Indian INS colour codes like "INS 102", "INS 110" and map to
+  E-numbers (e.g. "INS 102" → E-number "E102").
+- Detect phrases like "Artificial Colour", "Permitted Synthetic Food Colour",
+  "Colour (102, 110)" and extract the specific colour numbers.
+- Detect common dye names: Tartrazine, Sunset Yellow, Allura Red, Carmoisine,
+  Erythrosine, Brilliant Blue, Indigo Carmine, Fast Green, Ponceau 4R, etc.
+- When a colour is detected, set category to "Colorant".
 
 ALLOWED CATEGORIES:
 - Preservative
@@ -63,12 +76,14 @@ RAW OCR TEXT:
 Return a JSON array of objects. Each object must have these fields:
   - "name": string (cleaned ingredient name)
   - "e_number": string or null
+  - "fdc_number": string or null (FD&C dye designation, e.g. "FD&C Red 40")
   - "category": string (one of the allowed categories)
 
 Example output:
 [
-  {{"name": "Sugar", "e_number": null, "category": "Natural Ingredient"}},
-  {{"name": "Monosodium Glutamate", "e_number": "E621", "category": "Flavor Enhancer"}}
+  {{"name": "Sugar", "e_number": null, "fdc_number": null, "category": "Natural Ingredient"}},
+  {{"name": "Monosodium Glutamate", "e_number": "E621", "fdc_number": null, "category": "Flavor Enhancer"}},
+  {{"name": "Allura Red AC", "e_number": "E129", "fdc_number": "FD&C Red 40", "category": "Colorant"}}
 ]
 """
 
@@ -145,6 +160,7 @@ def parse_ingredients(ocr_text: str) -> list[Ingredient]:
             name=item["name"],
             raw_text=item.get("raw_text", ""),
             e_number=item.get("e_number"),
+            fdc_number=item.get("fdc_number"),
             category=category,
         ))
 
