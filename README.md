@@ -1,4 +1,4 @@
-# 🧪 Ingredient Toxicity Metric Fetcher
+# Ingredient Toxicity Metric Fetcher
 
 > **Analyze food product labels to detect ingredients and score their toxicity for human consumption.**
 
@@ -11,10 +11,10 @@ An end-to-end AI pipeline that takes a photo of a food product's ingredient labe
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-📷 Input Image ──► 🔍 OCR ──► 🧠 LLM Parser ──► 📚 Toxicity DB ──► ⚖️ Scorer ──► 📊 Report
+Input Image ──► OCR ──► LLM Parser ──► Toxicity DB ──► Scorer ──► Report
   (Food Label)     PaddleOCR    Gemini 2.0       SQLite (EFSA,      Gemini 2.0    Streamlit
                                 Flash             JECFA, FDA)        Flash         + PDF
 ```
@@ -29,19 +29,19 @@ An end-to-end AI pipeline that takes a photo of a food product's ingredient labe
 
 ---
 
-## 📊 Toxicity Scale
+## Toxicity Scale
 
 | Score | Label | Description | Example |
 |:------|:------|:------------|:--------|
-| 🟢 1–2 | **Safe** | Natural, widely consumed, no known adverse effects | Water, Citric Acid |
-| 🟡 3–4 | **Low Risk** | Generally safe, minor concerns at very high doses | Sodium Benzoate |
-| 🟠 5–6 | **Moderate** | Some studies show adverse effects; ADI can be exceeded | Aspartame, MSG |
-| 🔴 7–8 | **High Risk** | Banned in some countries, linked to health issues | Tartrazine, BHA |
-| ⛔ 9–10 | **Critical** | Banned substances, known carcinogens/toxins | Trans fats, Potassium Bromate |
+| 1–2 | **Safe** | Natural, widely consumed, no known adverse effects | Water, Citric Acid |
+| 3–4 | **Low Risk** | Generally safe, minor concerns at very high doses | Sodium Benzoate |
+| 5–6 | **Moderate** | Some studies show adverse effects; ADI can be exceeded | Aspartame, MSG |
+| 7–8 | **High Risk** | Banned in some countries, linked to health issues | Tartrazine, BHA |
+| 9–10 | **Critical** | Banned substances, known carcinogens/toxins | Trans fats, Potassium Bromate |
 
 ---
 
-## 🎨 Artificial Food Color & Synthetic Dye Detection
+## Artificial Food Color & Synthetic Dye Detection
 
 The pipeline features a dedicated lookup and alerting system for artificial food colors and synthetic dyes (covering FD&C, E-numbers/INS, and CI numbers):
 
@@ -52,7 +52,7 @@ The pipeline features a dedicated lookup and alerting system for artificial food
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.13+
@@ -79,7 +79,7 @@ uv run python scripts/build_database.py
 
 ### Usage
 
-#### 🖥️ CLI
+#### CLI
 ```bash
 # Basic analysis
 uv run python main.py --image path/to/food_label.jpg
@@ -91,14 +91,14 @@ uv run python main.py --image path/to/food_label.jpg --output report.pdf
 uv run python main.py --image path/to/food_label.jpg --json
 ```
 
-#### 🌐 Web Dashboard
+#### Web Dashboard
 ```bash
 uv run streamlit run app.py
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 ├── src/
@@ -128,7 +128,7 @@ uv run streamlit run app.py
 
 ---
 
-## 📚 Data Sources
+## Data Sources
 
 | Source | Description |
 |:-------|:------------|
@@ -140,7 +140,7 @@ uv run streamlit run app.py
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **OCR**: PaddleOCR + OpenCV preprocessing
 - **LLM**: Google Gemini 2.0 Flash (via `google-genai`)
@@ -152,6 +152,6 @@ uv run streamlit run app.py
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

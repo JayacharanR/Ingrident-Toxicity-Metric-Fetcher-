@@ -32,7 +32,6 @@ logging.basicConfig(level=logging.INFO)
 
 st.set_page_config(
     page_title="Ingredient Toxicity Analyzer",
-    page_icon="🧪",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -160,11 +159,11 @@ _RISK_BG: dict[RiskLevel, str] = {
 }
 
 _RISK_ICONS: dict[RiskLevel, str] = {
-    RiskLevel.SAFE:     "🟢",
-    RiskLevel.LOW:      "🟡",
-    RiskLevel.MODERATE: "🟠",
-    RiskLevel.HIGH:     "🔴",
-    RiskLevel.CRITICAL: "⛔",
+    RiskLevel.SAFE:     "",
+    RiskLevel.LOW:      "",
+    RiskLevel.MODERATE: "",
+    RiskLevel.HIGH:     "",
+    RiskLevel.CRITICAL: "",
 }
 
 
@@ -178,26 +177,26 @@ def app() -> None:
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🧪 Ingredient Toxicity Analyzer</h1>
+        <h1>Ingredient Toxicity Analyzer</h1>
         <p>Upload a food label image to analyze ingredient safety and toxicity</p>
     </div>
     """, unsafe_allow_html=True)
 
     # Sidebar
     with st.sidebar:
-        st.markdown("### ⚙️ Settings")
+        st.markdown("### Settings")
 
         # Configuration status
         issues = validate_config()
         if issues:
             for issue in issues:
                 if "GEMINI_API_KEY" in issue:
-                    st.error(f"🔑 {issue}")
+                    st.error(issue)
                 else:
-                    st.warning(f"⚠️ {issue}")
+                    st.warning(issue)
 
         st.markdown("---")
-        st.markdown("### 📖 How it works")
+        st.markdown("### How it works")
         st.markdown("""
         1. **Upload** a photo of a food product label
         2. **OCR** extracts text from the image
@@ -208,20 +207,20 @@ def app() -> None:
         """)
 
         st.markdown("---")
-        st.markdown("### 🎯 Toxicity Scale")
+        st.markdown("### Toxicity Scale")
         st.markdown("""
-        - 🟢 **1-2**: Safe
-        - 🟡 **3-4**: Low Risk
-        - 🟠 **5-6**: Moderate Risk
-        - 🔴 **7-8**: High Risk
-        - ⛔ **9-10**: Critical
+        - **1-2**: Safe
+        - **3-4**: Low Risk
+        - **5-6**: Moderate Risk
+        - **7-8**: High Risk
+        - **9-10**: Critical
         """)
 
     # Main content
     col_upload, col_preview = st.columns([1, 1])
 
     with col_upload:
-        st.markdown("### 📷 Upload Food Label Image")
+        st.markdown("### Upload Food Label Image")
         uploaded_file = st.file_uploader(
             "Choose an image file",
             type=["jpg", "jpeg", "png", "bmp", "webp"],
@@ -230,11 +229,11 @@ def app() -> None:
 
     if uploaded_file is not None:
         with col_preview:
-            st.markdown("### 🖼️ Image Preview")
+            st.markdown("### Image Preview")
             st.image(uploaded_file, use_container_width=True)
 
         # Analyze button
-        if st.button("🔍 Analyze Ingredients", type="primary", use_container_width=True):
+        if st.button("Analyze Ingredients", type="primary", use_container_width=True):
             _run_analysis(uploaded_file)
 
     # Show results if already computed
@@ -252,39 +251,39 @@ def _run_analysis(uploaded_file) -> None:
 
     try:
         # Stage 1: OCR
-        with st.status("🔍 Analyzing image...", expanded=True) as status:
-            st.write("📷 **Stage 1/4:** Extracting text from image...")
+        with st.status("Analyzing image...", expanded=True) as status:
+            st.write("**Stage 1/4:** Extracting text from image...")
             extractor = TextExtractor()
             raw_text, confidence = extractor.extract_with_confidence(tmp_path)
 
             if not raw_text.strip():
-                st.error("❌ No text could be extracted from the image. Please try a clearer photo.")
+                st.error("No text could be extracted from the image. Please try a clearer photo.")
                 return
 
-            st.write(f"✅ OCR complete — Confidence: **{confidence:.1%}**")
-            with st.expander("📝 Raw OCR Text"):
+            st.write(f"OCR complete — Confidence: **{confidence:.1%}**")
+            with st.expander("Raw OCR Text"):
                 st.code(raw_text, language=None)
 
             # Stage 2: Parse
-            st.write("🧠 **Stage 2/4:** Identifying ingredients with AI...")
+            st.write("**Stage 2/4:** Identifying ingredients with AI...")
             ingredients = parse_ingredients(raw_text)
 
             if not ingredients:
-                st.error("❌ No ingredients could be identified in the text.")
+                st.error("No ingredients could be identified in the text.")
                 return
 
-            st.write(f"✅ Found **{len(ingredients)}** ingredients")
+            st.write(f"Found **{len(ingredients)}** ingredients")
 
             # Stage 3 & 4: Lookup + Score
-            st.write("⚖️ **Stage 3/4:** Scoring toxicity for each ingredient...")
+            st.write("**Stage 3/4:** Scoring toxicity for each ingredient...")
             report = generate_report(
                 ingredients=ingredients,
                 image_path=tmp_path,
                 raw_ocr_text=raw_text,
             )
 
-            st.write("📊 **Stage 4/4:** Generating report...")
-            status.update(label="✅ Analysis complete!", state="complete")
+            st.write("**Stage 4/4:** Generating report...")
+            status.update(label="Analysis complete!", state="complete")
 
         # Save to session state
         st.session_state["report"] = report
@@ -295,7 +294,7 @@ def _run_analysis(uploaded_file) -> None:
     except Exception as exc:
         exc_str = str(exc)
         if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
-            st.error("⚠️ **Gemini API Rate Limit / Quota Exceeded (429)**")
+            st.error("**Gemini API Rate Limit / Quota Exceeded (429)**")
             st.markdown("""
             The Gemini API returned a `429 Resource Exhausted` error. 
             
@@ -305,14 +304,14 @@ def _run_analysis(uploaded_file) -> None:
             3. **Billing config**: Ensure that your API key project is configured correctly and billing setup hasn't disabled your free tier quota.
             """)
         elif "400" in exc_str or "API_KEY_INVALID" in exc_str:
-            st.error("🔑 **Invalid Gemini API Key (400)**")
+            st.error("**Invalid Gemini API Key (400)**")
             st.markdown("""
             The Gemini API key provided in your `.env` file is invalid. 
             
             Please go to [Google AI Studio](https://aistudio.google.com/apikey) to generate a valid API key, copy it, and replace the `GEMINI_API_KEY` in your `.env` file.
             """)
         else:
-            st.error(f"❌ **An unexpected error occurred:** {exc}")
+            st.error(f"**An unexpected error occurred:** {exc}")
 
 
 def _display_results(report) -> None:
@@ -321,7 +320,7 @@ def _display_results(report) -> None:
     st.markdown("---")
 
     # --- Summary Cards ---
-    st.markdown("### 📊 Analysis Summary")
+    st.markdown("### Analysis Summary")
     c1, c2, c3, c4 = st.columns(4)
 
     risk_class = _RISK_BG[report.overall_risk]
@@ -346,7 +345,7 @@ def _display_results(report) -> None:
     with c3:
         st.markdown(f"""
         <div class="score-card" style="background: #f8f9fa;">
-            <h2>{icon} {report.overall_risk.value}</h2>
+            <h2>{report.overall_risk.value}</h2>
             <p>Risk Level</p>
         </div>
         """, unsafe_allow_html=True)
@@ -364,7 +363,7 @@ def _display_results(report) -> None:
 
     # --- Ingredient Details ---
     st.markdown("---")
-    st.markdown("### 🧪 Ingredient Breakdown")
+    st.markdown("### Ingredient Breakdown")
 
     # Sort options
     sort_option = st.selectbox(
@@ -391,14 +390,14 @@ def _display_results(report) -> None:
             dye_badge = (
                 '<span style="display: inline-block; background: linear-gradient(135deg, #7c3aed, #a855f7); '
                 'color: white; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.7rem; '
-                'font-weight: 600; margin-left: 0.5rem; vertical-align: middle;">🎨 SYNTHETIC DYE</span>'
+                'font-weight: 600; margin-left: 0.5rem; vertical-align: middle;">SYNTHETIC DYE</span>'
             )
 
         with st.container():
             st.markdown(f"""
             <div class="ingredient-card" style="border-left-color: {color};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4>{icon} {item.ingredient.name}{dye_badge}</h4>
+                    <h4>{item.ingredient.name}{dye_badge}</h4>
                     <span class="score-badge" style="background: {color}; color: white;">
                         {item.toxicity_score}/10 — {item.risk_level.value}
                     </span>
@@ -407,7 +406,7 @@ def _display_results(report) -> None:
             </div>
             """, unsafe_allow_html=True)
 
-            with st.expander(f"📋 Details for {item.ingredient.name}"):
+            with st.expander(f"Details for {item.ingredient.name}"):
                 detail_cols = st.columns([2, 1])
                 with detail_cols[0]:
                     st.markdown(f"**Why it's harmful (or safe):**\n\n{item.harm_explanation}")
@@ -417,13 +416,13 @@ def _display_results(report) -> None:
                         td = item.toxicity_data
                         if td.southampton_six:
                             st.warning(
-                                "🏷️ **Southampton Six** — This dye is one of the six colours "
+                                "**Southampton Six** — This dye is one of the six colours "
                                 "that must carry the warning *'may have an adverse effect on "
                                 "activity and attention in children'* in the EU."
                             )
                         if td.fda_phase_out:
                             st.error(
-                                "🇺🇸 **FDA Phase-Out** — This dye is targeted for removal "
+                                "**FDA Phase-Out** — This dye is targeted for removal "
                                 "from the US food supply by 2026."
                             )
 
@@ -442,7 +441,7 @@ def _display_results(report) -> None:
                     if item.is_artificial_colour and item.toxicity_data:
                         td = item.toxicity_data
                         st.markdown("---")
-                        st.markdown("**🧪 Dye Information**")
+                        st.markdown("**Dye Information**")
                         if td.ci_number:
                             st.markdown(f"**CI Number:** {td.ci_number}")
                         if td.dye_class:
@@ -452,18 +451,18 @@ def _display_results(report) -> None:
 
     # --- Export Options ---
     st.markdown("---")
-    st.markdown("### 📥 Export")
+    st.markdown("### Export")
 
     col_pdf, col_json = st.columns(2)
 
     with col_pdf:
-        if st.button("📄 Download PDF Report", use_container_width=True):
+        if st.button("Download PDF Report", use_container_width=True):
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
                 generate_pdf(report, tmp.name)
                 with open(tmp.name, "rb") as f:
                     pdf_bytes = f.read()
                 st.download_button(
-                    label="💾 Save PDF",
+                    label="Save PDF",
                     data=pdf_bytes,
                     file_name="toxicity_report.pdf",
                     mime="application/pdf",
@@ -473,7 +472,7 @@ def _display_results(report) -> None:
     with col_json:
         json_data = report.model_dump_json(indent=2)
         st.download_button(
-            label="💾 Download JSON Data",
+            label="Download JSON Data",
             data=json_data,
             file_name="toxicity_report.json",
             mime="application/json",
